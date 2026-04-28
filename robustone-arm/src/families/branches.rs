@@ -10,14 +10,15 @@ use crate::encoding;
 /// Decode branch instructions.
 pub fn decode_branches(word: u32) -> Result<(&'static str, Vec<Operand>), DisasmError> {
     // B / BL (unconditional immediate): op(1) | 00101 | imm26
+    // The imm26 is a word offset; multiply by 4 to get byte offset.
     if (word & 0xFC000000) == 0x14000000 {
         let imm26 = encoding::extract_imm26(word);
-        let target = sign_extend_26(imm26);
+        let target = sign_extend_26(imm26) << 2;
         return Ok(("b", vec![Operand::Immediate { value: target }]));
     }
     if (word & 0xFC000000) == 0x94000000 {
         let imm26 = encoding::extract_imm26(word);
-        let target = sign_extend_26(imm26);
+        let target = sign_extend_26(imm26) << 2;
         return Ok(("bl", vec![Operand::Immediate { value: target }]));
     }
 
@@ -39,12 +40,12 @@ pub fn decode_branches(word: u32) -> Result<(&'static str, Vec<Operand>), Disasm
         }
 
         // RET: op1=010, op2=11111, Rd=00000
-        // Capstone shows "ret" without operands, but includes x30 in detail.
+        // Capstone shows "ret" without operands, but includes the target register in detail.
         if op1 == 0b010 && op2 == 0x1F && rd == 0 {
             return Ok((
                 "ret",
                 vec![Operand::Register {
-                    register: aarch64_reg(30),
+                    register: aarch64_reg(rn),
                 }],
             ));
         }

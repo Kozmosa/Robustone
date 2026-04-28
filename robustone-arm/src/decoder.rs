@@ -190,7 +190,9 @@ fn compute_metadata(
             groups.push("branch".to_string());
             groups.push("return".to_string());
             groups.push("jump".to_string());
-            implicit_registers_read.push(aarch64_reg(30));
+            if let Some(Operand::Register { register }) = operands.first() {
+                implicit_registers_read.push(*register);
+            }
         }
         "hint" | "nop" => {
             groups.push("system".to_string());

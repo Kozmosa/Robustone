@@ -110,15 +110,45 @@ pub fn decode_data_processing_immediate(
     })
 }
 
-/// Decode a bitmask immediate (simplified for common cases).
+/// Decode a bitmask immediate following the AArch64 algorithm.
+///
+/// Reference: ARM ARM DDI 0487I.a, section "DecodeBitMasks".
 fn decode_bitmask_imm(_n: u32, immr: u32, imms: u32) -> i64 {
-    // Simplified: just return a value derived from imms for the test cases.
-    // Full bitmask immediate decoding is complex; this covers the baseline tests.
-    let _ = immr;
-    let _ = _n;
-    // For the test case orr x0, x0, #0x100000001:
-    // This is a somewhat special bitmask. For now, return a reasonable value.
-    if imms == 0 { 0x1 } else { 0x100000001i64 }
+    // len = HighestSetBit(NOT(imms)) for a 6-bit value.
+    let not_imms = (!imms) & 0x3F;
+    let mut len = 0;
+    for i in (0..6).rev() {
+        if (not_imms >> i) & 1 == 1 {
+            len = i + 1;
+            break;
+        }
+    }
+
+    // size = 2^len
+    let size = 1u64 << len;
+    let levels = size - 1;
+
+    let s = (imms as u64) & levels;
+    let r = (immr as u64) & levels;
+
+    // d = S + 1 consecutive ones
+    let d = s + 1;
+    let mut welem = (1u64 << d) - 1;
+
+    // Rotate right by r within the element size
+    if r > 0 {
+        welem = ((welem >> r) | (welem << (size - r))) & ((1u64 << size) - 1);
+    }
+
+    // Replicate to fill 64 bits
+    let mut result = 0u64;
+    let mut i = 0u64;
+    while i < 64 {
+        result |= welem << i;
+        i += size;
+    }
+
+    result as i64
 }
 
 fn aarch64_reg(id: u32) -> RegisterId {
