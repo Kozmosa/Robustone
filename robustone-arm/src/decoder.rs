@@ -97,16 +97,24 @@ fn decode_aarch64_word(word: u32) -> Result<(&'static str, Vec<Operand>), Disasm
 }
 
 /// Compute render hints to match Capstone text output.
-fn compute_render_hints(mnemonic: &str, _operands: &[Operand]) -> RenderHints {
+fn compute_render_hints(mnemonic: &str, operands: &[Operand]) -> RenderHints {
     match mnemonic {
         "hint" => RenderHints {
             capstone_mnemonic: Some("nop".to_string()),
             capstone_hidden_operands: vec![0],
         },
-        "ret" => RenderHints {
-            capstone_mnemonic: None,
-            capstone_hidden_operands: vec![0],
-        },
+        "ret" => {
+            // Capstone hides the operand only for the default ret (x30).
+            // Non-default returns like ret x1 are shown explicitly.
+            let is_default = matches!(
+                operands.first(),
+                Some(Operand::Register { register }) if register.id == 30
+            );
+            RenderHints {
+                capstone_mnemonic: None,
+                capstone_hidden_operands: if is_default { vec![0] } else { vec![] },
+            }
+        }
         _ => RenderHints::default(),
     }
 }

@@ -78,7 +78,10 @@ pub fn decode_data_processing_register(
             }
         };
 
-        let ops = vec![
+        let shift = encoding::extract_shift(word);
+        let imm6 = encoding::extract_imm6(word);
+
+        let mut ops = vec![
             Operand::Register {
                 register: aarch64_reg(rd),
             },
@@ -89,6 +92,19 @@ pub fn decode_data_processing_register(
                 register: aarch64_reg(rm),
             },
         ];
+
+        // Emit shift operand when present (imm6 != 0).
+        if imm6 != 0 {
+            let shift_name = match shift {
+                0 => "lsl",
+                1 => "lsr",
+                2 => "asr",
+                _ => "ror",
+            };
+            ops.push(Operand::Text {
+                value: format!("{shift_name} #{imm6}"),
+            });
+        }
 
         return Ok((mnemonic, ops));
     }

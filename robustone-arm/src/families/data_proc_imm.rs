@@ -49,7 +49,8 @@ pub fn decode_data_processing_immediate(
 
     // Logical immediate: sf | opc(2) | 100100 | N | immr | imms | Rn | Rd
     // ORR (immediate): opc=01
-    if (word & 0x1F800000) == 0x12000000 {
+    // Require sf=1 (64-bit).
+    if (word & 0x1F800000) == 0x12000000 && ((word >> 31) & 1) == 1 {
         let opc = encoding::extract_opc(word);
         if opc == 0b01 {
             let rd = encoding::extract_rd(word);
@@ -82,7 +83,8 @@ pub fn decode_data_processing_immediate(
 
     // Move wide (immediate): sf | opc(2) | 100101 | hw | imm16 | Rd
     // MOVZ: opc=10
-    if (word & 0x1F800000) == 0x12800000 {
+    // Require sf=1 (64-bit).
+    if (word & 0x1F800000) == 0x12800000 && ((word >> 31) & 1) == 1 {
         let opc = encoding::extract_opc(word);
         if opc == 0b10 {
             let rd = encoding::extract_rd(word);
@@ -145,7 +147,12 @@ fn decode_bitmask_imm(_n: u32, immr: u32, imms: u32) -> i64 {
 
     // Rotate right by r within the element size
     if r > 0 {
-        welem = ((welem >> r) | (welem << (size - r))) & ((1u64 << size) - 1);
+        let size_mask = if size == 64 {
+            u64::MAX
+        } else {
+            (1u64 << size) - 1
+        };
+        welem = ((welem >> r) | (welem << (size - r))) & size_mask;
     }
 
     // Replicate to fill 64 bits
