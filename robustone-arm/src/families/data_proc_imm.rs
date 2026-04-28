@@ -137,6 +137,10 @@ fn decode_bitmask_imm(_n: u32, immr: u32, imms: u32) -> i64 {
 
     // d = S + 1 consecutive ones
     let d = s + 1;
+    if d >= 64 {
+        // Invalid encoding per ARM ARM (S == levels), but return 0 to avoid panic.
+        return 0;
+    }
     let mut welem = (1u64 << d) - 1;
 
     // Rotate right by r within the element size
