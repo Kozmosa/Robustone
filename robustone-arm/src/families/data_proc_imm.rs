@@ -119,7 +119,7 @@ pub fn decode_data_processing_immediate(
 /// Decode a bitmask immediate following the AArch64 algorithm.
 ///
 /// Reference: ARM ARM DDI 0487I.a, section "DecodeBitMasks".
-fn decode_bitmask_imm(_n: u32, immr: u32, imms: u32) -> i64 {
+fn decode_bitmask_imm(n: u32, immr: u32, imms: u32) -> i64 {
     // len = HighestSetBit(NOT(imms)) for a 6-bit value.
     let not_imms = (!imms) & 0x3F;
     let mut len = 0;
@@ -128,6 +128,13 @@ fn decode_bitmask_imm(_n: u32, immr: u32, imms: u32) -> i64 {
             len = i + 1;
             break;
         }
+    }
+    // When imms is all 1s, N must be 1 and the element size is 64.
+    if not_imms == 0 {
+        if n != 1 {
+            return 0; // Invalid encoding per ARM ARM.
+        }
+        len = 6;
     }
 
     // size = 2^len

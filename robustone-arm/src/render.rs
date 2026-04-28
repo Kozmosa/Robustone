@@ -37,11 +37,11 @@ pub fn render_aarch64_text_parts(
     (capstone_mnemonic, operands)
 }
 
-fn format_aarch64_operand(mnemonic: &str, idx: usize, operand: &Operand) -> String {
+fn format_aarch64_operand(mnemonic: &str, _idx: usize, operand: &Operand) -> String {
     match operand {
         Operand::Register { register } => {
-            // For CSEL, x31 in source positions (idx 1 or 2) is xzr, not sp
-            if mnemonic == "csel" && (idx == 1 || idx == 2) && register.id == 31 {
+            // For CSEL, x31 is xzr in all positions (destination and sources).
+            if mnemonic == "csel" && register.id == 31 {
                 "xzr".to_string()
             } else {
                 aarch64_register_name(register.id)

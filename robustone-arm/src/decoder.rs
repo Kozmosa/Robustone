@@ -144,8 +144,12 @@ fn compute_metadata(
             if let Some(Operand::Register { register }) = operands.first() {
                 registers_written.push(*register);
             }
+            // For immediate forms (e.g., ADD imm), Rn=31 is SP (a real read).
+            // For register forms, Rn=31 is XZR (can be omitted).
+            let is_imm = operands.len() >= 3
+                && matches!(operands.get(2), Some(Operand::Immediate { .. }));
             if let Some(Operand::Register { register }) = operands.get(1)
-                && register.id != 31
+                && (is_imm || register.id != 31)
             {
                 registers_read.push(*register);
             }
