@@ -30,21 +30,42 @@ pub fn render_aarch64_text_parts(
         .iter()
         .enumerate()
         .filter(|(idx, _)| !hidden.contains(idx))
-        .map(|(idx, op)| format_aarch64_operand(instruction.mnemonic.as_str(), idx, op))
+        .map(|(idx, op)| {
+            format_aarch64_operand(
+                instruction.mnemonic.as_str(),
+                idx,
+                op,
+                &instruction.operands,
+            )
+        })
         .collect::<Vec<_>>()
         .join(", ");
 
     (capstone_mnemonic, operands)
 }
 
-fn format_aarch64_operand(mnemonic: &str, _idx: usize, operand: &Operand) -> String {
+fn format_aarch64_operand(
+    mnemonic: &str,
+    idx: usize,
+    operand: &Operand,
+    all_operands: &[Operand],
+) -> String {
     match operand {
         Operand::Register { register } => {
-            // For CSEL, x31 is xzr in all positions (destination and sources).
-            if mnemonic == "csel" && register.id == 31 {
-                "xzr".to_string()
+            if register.id == 31 {
+                // Register 31 is SP only in ADD/SUB immediate instructions.
+                // In all other contexts (including CSEL, logical, branch), it is XZR.
+                let is_sp = (mnemonic == "add" || mnemonic == "sub")
+                    && idx < 2
+                    && all_operands.len() >= 3
+                    && matches!(all_operands.get(2), Some(Operand::Immediate { .. }));
+                if is_sp {
+                    "sp".to_string()
+                } else {
+                    "xzr".to_string()
+                }
             } else {
-                aarch64_register_name(register.id)
+                format!("x{}", register.id)
             }
         }
         Operand::Immediate { value } => {
@@ -60,7 +81,11 @@ fn format_aarch64_operand(mnemonic: &str, _idx: usize, operand: &Operand) -> Str
         Operand::Text { value } => value.clone(),
         Operand::Memory { base, displacement } => {
             if let Some(base) = base {
-                format!("[{}, #{}]", aarch64_register_name(base.id), displacement)
+                format!(
+                    "[{}, #{}]",
+                    aarch64_register_name(base.id),
+                    displacement
+                )
             } else {
                 format!("[#{displacement}]")
             }

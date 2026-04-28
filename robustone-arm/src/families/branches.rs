@@ -26,11 +26,12 @@ pub fn decode_branches(word: u32) -> Result<(&'static str, Vec<Operand>), Disasm
     if (word & 0xFE000000) == 0xD6000000 {
         let op1 = (word >> 21) & 0x7;
         let op2 = (word >> 16) & 0x1F;
+        let op3 = (word >> 10) & 0x3F;
         let rn = encoding::extract_rn(word);
         let rd = encoding::extract_rd(word);
 
-        // BR: op1=000, op2=11111, Rd=00000
-        if op1 == 0 && op2 == 0x1F && rd == 0 {
+        // BR: op1=000, op2=11111, op3=000000, Rd=00000
+        if op1 == 0 && op2 == 0x1F && op3 == 0 && rd == 0 {
             return Ok((
                 "br",
                 vec![Operand::Register {
@@ -39,9 +40,9 @@ pub fn decode_branches(word: u32) -> Result<(&'static str, Vec<Operand>), Disasm
             ));
         }
 
-        // RET: op1=010, op2=11111, Rd=00000
+        // RET: op1=010, op2=11111, op3=000000, Rd=00000
         // Capstone shows "ret" without operands, but includes the target register in detail.
-        if op1 == 0b010 && op2 == 0x1F && rd == 0 {
+        if op1 == 0b010 && op2 == 0x1F && op3 == 0 && rd == 0 {
             return Ok((
                 "ret",
                 vec![Operand::Register {

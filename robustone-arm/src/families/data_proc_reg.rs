@@ -41,6 +41,15 @@ pub fn decode_data_processing_register(
             },
         ];
 
+        // ADD/SUB shifted register only supports shift=0b00/01/10; 0b11 is reserved.
+        if shift == 3 {
+            return Err(DisasmError::DecodeFailure {
+                kind: DecodeErrorKind::InvalidEncoding,
+                architecture: Some("aarch64".to_string()),
+                detail: format!("reserved shift value for ADD/SUB reg: {shift}"),
+            });
+        }
+
         // Emit shift operand when present (imm6 != 0).
         if imm6 != 0 {
             let shift_name = match shift {
@@ -165,6 +174,7 @@ fn condition_name(cond: u8) -> &'static str {
         0b1100 => "gt",
         0b1101 => "le",
         0b1110 => "al",
+        0b1111 => "nv",
         _ => "??",
     }
 }
