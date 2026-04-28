@@ -75,7 +75,13 @@ fn format_aarch64_operand(
             } else if *value >= 0 && *value < 10 {
                 format!("#{value}")
             } else {
-                format!("#0x{value:x}")
+                // AArch64 bitmask immediates are unsigned; render as unsigned hex
+                // when the signed i64 representation is negative.
+                if *value < 0 {
+                    format!("#0x{:x}", *value as u64)
+                } else {
+                    format!("#0x{value:x}")
+                }
             }
         }
         Operand::Text { value } => value.clone(),

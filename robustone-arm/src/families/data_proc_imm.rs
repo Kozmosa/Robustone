@@ -60,7 +60,7 @@ pub fn decode_data_processing_immediate(
             let imms = (word >> 10) & 0x3F;
             let _n = (word >> 22) & 1;
 
-            let value = decode_bitmask_imm(_n, immr, imms).ok_or_else(|| DisasmError::DecodeFailure {
+            let imm_value = decode_bitmask_imm(_n, immr, imms).ok_or_else(|| DisasmError::DecodeFailure {
                 kind: DecodeErrorKind::InvalidEncoding,
                 architecture: Some("aarch64".to_string()),
                 detail: "invalid bitmask immediate encoding".to_string(),
@@ -80,7 +80,7 @@ pub fn decode_data_processing_immediate(
                 "orr"
             };
 
-            ops.push(Operand::Immediate { value });
+            ops.push(Operand::Immediate { value: imm_value as i64 });
             return Ok((mnemonic, ops));
         }
     }
@@ -123,7 +123,7 @@ pub fn decode_data_processing_immediate(
 /// Decode a bitmask immediate following the AArch64 algorithm.
 ///
 /// Reference: ARM ARM DDI 0487I.a, section "DecodeBitMasks".
-fn decode_bitmask_imm(n: u32, immr: u32, imms: u32) -> Option<i64> {
+fn decode_bitmask_imm(n: u32, immr: u32, imms: u32) -> Option<u64> {
     // len = HighestSetBit(N:NOT(imms)) for a 7-bit value.
     let not_imms = (!imms) & 0x3F;
     let concat = ((n & 1) << 6) | not_imms;
@@ -136,6 +136,10 @@ fn decode_bitmask_imm(n: u32, immr: u32, imms: u32) -> Option<i64> {
     }
     // N:NOT(imms) all zeros is a reserved encoding.
     if concat == 0 {
+        return None; // Invalid encoding per ARM ARM.
+    }
+    // Element size must be at least 2 bits (len >= 1).
+    if len < 1 {
         return None; // Invalid encoding per ARM ARM.
     }
 
@@ -151,12 +155,13 @@ fn decode_bitmask_imm(n: u32, immr: u32, imms: u32) -> Option<i64> {
     let s = (imms as u64) & levels;
     let r = (immr as u64) & levels;
 
+    // S == levels is a reserved encoding for every element size.
+    if s == levels {
+        return None; // Invalid encoding per ARM ARM.
+    }
+
     // d = S + 1 consecutive ones
     let d = s + 1;
-    if d >= 64 {
-        // Invalid encoding per ARM ARM (S == levels).
-        return None;
-    }
     let mut welem = (1u64 << d) - 1;
 
     // Rotate right by r within the element size
@@ -177,7 +182,7 @@ fn decode_bitmask_imm(n: u32, immr: u32, imms: u32) -> Option<i64> {
         i += size;
     }
 
-    Some(result as i64)
+    Some(result)
 }
 
 fn aarch64_reg(id: u32) -> RegisterId {
