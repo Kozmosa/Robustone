@@ -129,12 +129,14 @@ fn decode_bitmask_imm(n: u32, immr: u32, imms: u32) -> i64 {
             break;
         }
     }
-    // When imms is all 1s, N must be 1 and the element size is 64.
+    // When imms is all 1s, NOT(imms) has no set bits; len should be 6 (size=64).
     if not_imms == 0 {
-        if n != 1 {
-            return 0; // Invalid encoding per ARM ARM.
-        }
         len = 6;
+    }
+
+    // Validate N: N must be 0 when len < 6, and N must be 1 when len == 6.
+    if (len < 6 && n != 0) || (len == 6 && n != 1) {
+        return 0; // Invalid encoding per ARM ARM.
     }
 
     // size = 2^len

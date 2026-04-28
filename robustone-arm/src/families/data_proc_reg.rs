@@ -119,13 +119,14 @@ pub fn decode_data_processing_register(
     }
 
     // Conditional select: sf | op | S | 11010 | op2(2) | Rm | cond | op3(1) | Rn | Rd
-    // CSEL: op=0, op2=00, op3=0
-    // Require sf=1 (64-bit).
+    // CSEL: op=0, S=0, op2=00, op3=0
+    // Require sf=1 (64-bit). S=0 excludes conditional-compare (CCMN/CCMP).
     if (word & 0x1F000000) == 0x1A000000 && ((word >> 31) & 1) == 1 {
         let op = (word >> 30) & 1;
+        let s = ((word >> 29) & 1) != 0;
         let op2 = (word >> 10) & 0x3;
         let op3 = (word >> 11) & 1;
-        if op == 0 && op2 == 0b00 && op3 == 0 {
+        if !s && op == 0 && op2 == 0b00 && op3 == 0 {
             let rd = encoding::extract_rd(word);
             let rn = encoding::extract_rn(word);
             let rm = encoding::extract_rm(word);
