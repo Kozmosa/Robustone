@@ -130,7 +130,7 @@ fn compute_metadata(
     let mut groups: Vec<String> = Vec::new();
 
     match mnemonic {
-        "add" | "sub" | "orr" | "eor" | "and" => {
+        "add" | "adds" | "sub" | "subs" | "orr" | "eor" | "and" => {
             groups.push("arithmetic".to_string());
 
             if let Some(Operand::Register { register }) = operands.first() {

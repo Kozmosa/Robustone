@@ -12,7 +12,8 @@ pub fn decode_data_processing_immediate(
     word: u32,
 ) -> Result<(&'static str, Vec<Operand>), DisasmError> {
     // ADD (immediate): sf=1 | op=0 | S=0 | 10001 | shift | imm12 | Rn | Rd
-    if (word & 0x1F000000) == 0x11000000 {
+    // Strict mask to avoid matching sub/adds encodings.
+    if (word & 0xFF000000) == 0x91000000 {
         let rd = encoding::extract_rd(word);
         let rn = encoding::extract_rn(word);
         let imm12 = encoding::extract_imm12(word);
@@ -64,15 +65,18 @@ pub fn decode_data_processing_immediate(
                 register: aarch64_reg(rd),
             }];
 
-            // Only add Rn if it's not XZR (for MOV alias)
-            if rn != 31 {
+            // When Rn is XZR, this is the MOV alias: mov Rd, #imm
+            let mnemonic = if rn == 31 {
+                "mov"
+            } else {
                 ops.push(Operand::Register {
                     register: aarch64_reg(rn),
                 });
-            }
+                "orr"
+            };
 
             ops.push(Operand::Immediate { value });
-            return Ok(("orr", ops));
+            return Ok((mnemonic, ops));
         }
     }
 

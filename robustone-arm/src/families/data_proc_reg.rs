@@ -14,13 +14,19 @@ pub fn decode_data_processing_register(
     // ADD / SUB (shifted register): sf | op | S | 01011 | shift | N | Rm | imm6 | Rn | Rd
     if (word & 0x1F200000) == 0x0B000000 {
         let op = encoding::extract_op_bit30(word);
+        let s = ((word >> 29) & 1) != 0;
         let rd = encoding::extract_rd(word);
         let rn = encoding::extract_rn(word);
         let rm = encoding::extract_rm(word);
         let _shift = encoding::extract_shift(word);
         let _imm6 = encoding::extract_imm6(word);
 
-        let mnemonic = if op { "sub" } else { "add" };
+        let mnemonic = match (op, s) {
+            (false, false) => "add",
+            (false, true) => "adds",
+            (true, false) => "sub",
+            (true, true) => "subs",
+        };
 
         let ops = vec![
             Operand::Register {
