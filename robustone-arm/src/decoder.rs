@@ -133,7 +133,7 @@ fn compute_metadata(
 ) {
     let mut registers_read: Vec<RegisterId> = Vec::new();
     let mut registers_written: Vec<RegisterId> = Vec::new();
-    let mut implicit_registers_read: Vec<RegisterId> = Vec::new();
+    let implicit_registers_read: Vec<RegisterId> = Vec::new();
     let mut implicit_registers_written: Vec<RegisterId> = Vec::new();
     let mut groups: Vec<String> = Vec::new();
 
@@ -195,7 +195,7 @@ fn compute_metadata(
             groups.push("branch".to_string());
             groups.push("jump".to_string());
             if let Some(Operand::Register { register }) = operands.first() {
-                implicit_registers_read.push(*register);
+                registers_read.push(*register);
             }
         }
         "ret" => {
@@ -203,7 +203,7 @@ fn compute_metadata(
             groups.push("return".to_string());
             groups.push("jump".to_string());
             if let Some(Operand::Register { register }) = operands.first() {
-                implicit_registers_read.push(*register);
+                registers_read.push(*register);
             }
         }
         "hint" | "nop" => {

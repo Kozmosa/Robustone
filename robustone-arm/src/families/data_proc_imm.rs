@@ -60,7 +60,11 @@ pub fn decode_data_processing_immediate(
             let imms = (word >> 10) & 0x3F;
             let _n = (word >> 22) & 1;
 
-            let value = decode_bitmask_imm(_n, immr, imms);
+            let value = decode_bitmask_imm(_n, immr, imms).ok_or_else(|| DisasmError::DecodeFailure {
+                kind: DecodeErrorKind::InvalidEncoding,
+                architecture: Some("aarch64".to_string()),
+                detail: "invalid bitmask immediate encoding".to_string(),
+            })?;
 
             let mut ops = vec![Operand::Register {
                 register: aarch64_reg(rd),
@@ -119,7 +123,7 @@ pub fn decode_data_processing_immediate(
 /// Decode a bitmask immediate following the AArch64 algorithm.
 ///
 /// Reference: ARM ARM DDI 0487I.a, section "DecodeBitMasks".
-fn decode_bitmask_imm(n: u32, immr: u32, imms: u32) -> i64 {
+fn decode_bitmask_imm(n: u32, immr: u32, imms: u32) -> Option<i64> {
     // len = HighestSetBit(NOT(imms)) for a 6-bit value.
     let not_imms = (!imms) & 0x3F;
     let mut len = 0;
@@ -136,7 +140,7 @@ fn decode_bitmask_imm(n: u32, immr: u32, imms: u32) -> i64 {
 
     // Validate N: N must be 0 when len < 6, and N must be 1 when len == 6.
     if (len < 6 && n != 0) || (len == 6 && n != 1) {
-        return 0; // Invalid encoding per ARM ARM.
+        return None; // Invalid encoding per ARM ARM.
     }
 
     // size = 2^len
@@ -149,8 +153,8 @@ fn decode_bitmask_imm(n: u32, immr: u32, imms: u32) -> i64 {
     // d = S + 1 consecutive ones
     let d = s + 1;
     if d >= 64 {
-        // Invalid encoding per ARM ARM (S == levels), but return 0 to avoid panic.
-        return 0;
+        // Invalid encoding per ARM ARM (S == levels).
+        return None;
     }
     let mut welem = (1u64 << d) - 1;
 
@@ -172,7 +176,7 @@ fn decode_bitmask_imm(n: u32, immr: u32, imms: u32) -> i64 {
         i += size;
     }
 
-    result as i64
+    Some(result as i64)
 }
 
 fn aarch64_reg(id: u32) -> RegisterId {
