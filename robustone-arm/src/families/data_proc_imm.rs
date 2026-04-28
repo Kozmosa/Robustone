@@ -124,21 +124,22 @@ pub fn decode_data_processing_immediate(
 ///
 /// Reference: ARM ARM DDI 0487I.a, section "DecodeBitMasks".
 fn decode_bitmask_imm(n: u32, immr: u32, imms: u32) -> Option<i64> {
-    // len = HighestSetBit(NOT(imms)) for a 6-bit value.
+    // len = HighestSetBit(N:NOT(imms)) for a 7-bit value.
     let not_imms = (!imms) & 0x3F;
+    let concat = ((n & 1) << 6) | not_imms;
     let mut len = 0;
-    for i in (0..6).rev() {
-        if (not_imms >> i) & 1 == 1 {
-            len = i + 1;
+    for i in (0..7).rev() {
+        if (concat >> i) & 1 == 1 {
+            len = i;
             break;
         }
     }
-    // When imms is all 1s, NOT(imms) has no set bits; len should be 6 (size=64).
-    if not_imms == 0 {
-        len = 6;
+    // N:NOT(imms) all zeros is a reserved encoding.
+    if concat == 0 {
+        return None; // Invalid encoding per ARM ARM.
     }
 
-    // Validate N: N must be 0 when len < 6, and N must be 1 when len == 6.
+    // Defensive check: N must be 0 when len < 6, and N must be 1 when len == 6.
     if (len < 6 && n != 0) || (len == 6 && n != 1) {
         return None; // Invalid encoding per ARM ARM.
     }
